@@ -77,13 +77,10 @@ class VShell(cmd2.Cmd):
         except UnicodeDecodeError:
             print(data)
 
-    term_parse = cmd2.Cmd2ArgumentParser()
-    term_parse.add_argument("switch", choices=["on", "off"])
-
-    @cmd2.with_argparser(term_parse)
     def do_term(self, arg):
-        if arg.switch == "on":
-            self.shell.set_term_mode(True)
-            self.shell.execute_cmd(b"python -c 'import pty; pty.spawn(\"/bin/bash\")'")
-        else:
-            self.shell.set_term_mode(False)
+        self.shell.execute_cmd(b"python -c 'import pty; pty.spawn(\"/bin/bash\")'")
+        self.shell.set_term_mode(True)
+        return True
+
+    def emptyline(self) -> bool:
+        pass

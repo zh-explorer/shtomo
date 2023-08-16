@@ -14,4 +14,6 @@ options:
 
 connection to a shell and press ctrl+c and try some internal cmdlet
 
-> use term on command in internal shell for a full functional shell
+> use term command in internal shell for a full functional shell
+> 
+> and ctrl-D for exit

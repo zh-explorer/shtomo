@@ -2,6 +2,7 @@ import os
 import selectors
 import fcntl
 import logging
+import time
 import traceback
 import string
 import random
@@ -76,8 +77,12 @@ class ShellUtil:
                             self.io.send(b"\x03")
                             return True
                         elif data == b"\x04":
-                            print("No ctrl-D!!!")
-                            continue
+                            self.io.send(b"\x03")
+                            time.sleep(0.5)
+                            self.io.send(b"exit\n")
+                            self.set_term_mode(False)
+                            tty.setcbreak(self.stdin.fileno())
+                            return True
                     if data == b'':
                         return False
                     self.io.send(data)
