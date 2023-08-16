@@ -1,88 +1,13 @@
+import os
 import selectors
 import fcntl
-import os
 import logging
-import socket
-import time
 import traceback
-import random
 import string
-import cmd2
-import argparse
-
-
-class VShell(cmd2.Cmd):
-    intro = "We are in internal shell util, run some prebuild function"
-    prompt = "$> "
-
-    def __init__(self, shell, completekey='tab', stdin=None, stdout=None):
-        super().__init__(completekey, stdin, stdout, allow_cli_args=False)
-        self.stop = False
-        self.shell: ShellUtil = shell
-        self.encode = "utf8"
-
-    def do_return(self, arg):
-        return True
-
-    def do_quit(self, arg):
-        self.stop = True
-        return True
-
-    def do_exit(self, arg):
-        self.stop = True
-        return True
-
-    upload_parser = cmd2.Cmd2ArgumentParser()
-    upload_parser.add_argument("src", help="src file path", completer=cmd2.Cmd.path_complete)
-    upload_parser.add_argument("dest", help="dest file path")
-    cmd_template3 = 'python -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
-    cmd_template2 = 'python -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
-
-    @cmd2.with_argparser(upload_parser)
-    def do_upload(self, arg):
-        src_file = arg.src
-        if not os.path.exists(src_file):
-            print(f"target file {src_file} not exist")
-        with open(src_file, 'rb') as fp:
-            data = fp.read()
-
-        dest_file = arg.dest
-
-        # get python version
-        cmd_return: bytes = self.shell.run_cmd(b"python --version")
-        if cmd_return.startswith(b"Python 3"):
-            cmd_template = self.cmd_template3
-        elif cmd_return.startswith(b"Python 2"):
-            cmd_template = self.cmd_template2
-        else:
-            try:
-                print("Unknown python version %s" % (cmd_return.decode(self.encode)))
-            except UnicodeDecodeError:
-                print("Unknown python version %s" % cmd_return)
-            return
-
-        shell_cmd = cmd_template % (len(data), dest_file)
-        shell_cmd = shell_cmd.encode(self.encode)
-
-        self.shell.execute_cmd(shell_cmd)
-        time.sleep(1)  # wait for some times
-        self.shell.send(data)
-
-    encode_parser = cmd2.Cmd2ArgumentParser()
-    encode_parser.add_argument("encode", help="terminal encoder")
-
-    @cmd2.with_argparser(encode_parser)
-    def do_encode(self, arg):
-        encode = arg.encode
-        self.encode = encode
-
-    def do_rcmd(self, arg: str):
-        arg = arg.encode(self.encode)
-        data = self.shell.run_cmd(arg)
-        try:
-            print(data.decode(self.encode))
-        except UnicodeDecodeError:
-            print(data)
+import random
+import socket
+import tty
+from shtomo.shtomo import VShell
 
 
 class ShellUtil:
@@ -92,6 +17,7 @@ class ShellUtil:
         self.io.setblocking(False)
         self.stdin = self.get_unblock_stdin()
         self.sel = selectors.DefaultSelector()
+        self.term_mode = False
 
     def get_unblock_stdin(self):
         fd = os.dup(0)
@@ -116,14 +42,19 @@ class ShellUtil:
             self.clean_sel()
             self.sel.register(self.io, selectors.EVENT_READ)
             self.sel.register(self.stdin, selectors.EVENT_READ)
+            if self.term_mode:
+                tty.setraw(self.stdin.fileno())
             try:
-                self.dup_to_terminal()
+                inter = self.dup_to_terminal()
             except KeyboardInterrupt as e:
                 inter = True
             except Exception as e:
                 # do not exit
                 logging.error("we face a error")
                 traceback.print_exc()
+            finally:
+                if self.term_mode:
+                    tty.setcbreak(self.stdin.fileno())
             if inter:
                 inter = False
                 if self.cmdline_module():
@@ -136,12 +67,19 @@ class ShellUtil:
                 if key.fileobj == self.io:
                     data = self.io.recv(1024)
                     if data == b'':
-                        break
+                        return False
                     os.write(1, data)
                 else:
                     data = os.read(0, 1024)
+                    if self.term_mode:
+                        if data == b'\x07':
+                            self.io.send(b"\x03")
+                            return True
+                        elif data == b"\x04":
+                            print("No ctrl-D!!!")
+                            continue
                     if data == b'':
-                        break
+                        return False
                     self.io.send(data)
 
     def cmdline_module(self):
@@ -221,15 +159,5 @@ class ShellUtil:
         data = data[:idx + len(data)]
         return data
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("ip", help="target ip")
-    parser.add_argument("port")
-
-    arg = parser.parse_args()
-    s = socket.socket()
-    s.connect((arg.ip, int(arg.port)))
-    shell = ShellUtil(s)
-    shell.interactive()
-
+    def set_term_mode(self, on: bool):
+        self.term_mode = on
