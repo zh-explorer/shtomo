@@ -73,10 +73,15 @@ class ShellUtil:
                 else:
                     data = os.read(0, 1024)
                     if self.term_mode:
-                        if data == b'\x07':
-                            self.io.send(b"\x03")
-                            return True
-                        elif data == b"\x04":
+                        # if data == b'\x07':
+                        #     self.io.send(b"\x03")
+                        #     return True
+
+                        # if we find a ctrl+D int term mode.
+                        # we just send ctrl+c to clean input and run exit to quit pty bash shell.
+                        # shtomo will switch back to normal mode
+                        # we don't want to lost out shell. use quit cmd to conform a quit
+                        if data == b"\x04":
                             self.io.send(b"\x03")
                             time.sleep(0.5)
                             self.io.send(b"exit\n")
@@ -101,11 +106,27 @@ class ShellUtil:
         return ''.join(random.choices(p, k=20)).encode("latin")
 
     def run_cmd(self, cmd: bytes) -> bytes:
-        token = self.random_str()
-        cmd_template = b"%s;echo '%s'" % (cmd, token)
+        token_start = self.random_str()
+        token_end = self.random_str()
+        cmd_template = b"echo '%s';%s;echo '%s'" % (token_start, cmd, token_end)
         self.execute_cmd(cmd_template)
-        data = self.recv_until(token + b"\n")
-        return data[:-len(token) - 1]
+
+        while True:
+            data = self.recv_until(token_start)
+            next_ch = self.recv(1)
+            if next_ch != b"'":  # this is an echo back, skip it
+                break
+
+        if next_ch == b"\r":  # need eat a \n char
+            next_ch = self.recv(1)
+            if next_ch != b'\n':  # ??? single \r?
+                self.unget(next_ch)
+        elif next_ch != b"\n":  # ??? where is my new line?
+            self.unget(next_ch)
+
+        data = self.recv_until(token_end)
+        junk = self.recv()
+        return data[:-len(token_end)]
 
     def execute_cmd(self, cmd: bytes):
         self.sendline(cmd)
@@ -124,14 +145,18 @@ class ShellUtil:
                 x = self.io.send(data[send_len:])
                 send_len += x
 
-    def recv(self, size: int = 0) -> bytes:
+    # put data back to stream
+    def unget(self, data: bytes):
+        self.io_buffer += data
+
+    def recv(self, size: int = 0, timeout=0) -> bytes:
         assert size >= 0
         self.clean_sel()
         self.sel.register(self.io, selectors.EVENT_READ)
         if size == 0:
             data = self.io_buffer
             self.io_buffer = b''
-            for key, mask in self.sel.select():
+            for key, mask in self.sel.select(timeout=timeout):
                 assert key.fileobj == self.io
                 while True:
                     try:
@@ -144,15 +169,19 @@ class ShellUtil:
                 data = self.io_buffer[:size]
                 self.io_buffer = self.io_buffer[size:]
             else:
+                start_time = int(time.time())
                 read_len = len(self.io_buffer)
                 data = self.io_buffer
                 self.io_buffer = b''
                 while read_len < size:
-                    for key, mask in self.sel.select():
+                    for key, mask in self.sel.select(timeout=1):
                         assert key.fileobj == self.io
                         re = self.io.recv(size - read_len)
                         read_len += len(re)
                         data += re
+                    if int(time.time()) - start_time > timeout:
+                        # timeout give up amd return data we read
+                        break
         return data
 
     def recv_until(self, end: bytes):
@@ -160,8 +189,8 @@ class ShellUtil:
         while end not in data:
             data += self.recv()
         idx = data.index(end)
-        self.io_buffer = data[idx + len(data):]
-        data = data[:idx + len(data)]
+        self.io_buffer = data[idx + len(end):]
+        data = data[:idx + len(end)]
         return data
 
     def set_term_mode(self, on: bool):
