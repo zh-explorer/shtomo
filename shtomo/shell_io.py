@@ -19,6 +19,7 @@ class ShellUtil:
         self.stdin = self.get_unblock_stdin()
         self.sel = selectors.DefaultSelector()
         self.term_mode = False
+        self.console = VShell(self)
 
     def get_unblock_stdin(self):
         fd = os.dup(0)
@@ -94,12 +95,11 @@ class ShellUtil:
 
     def cmdline_module(self):
         try:
-            shell = VShell(self)
-            shell.cmdloop()
+            self.console.cmdloop()
         except Exception:
             traceback.print_exc()
             return False
-        return shell.stop
+        return self.console.stop
 
     def random_str(self):
         p = string.ascii_letters + string.digits

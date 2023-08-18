@@ -5,26 +5,63 @@ from shtomo.parser_socks5_url import SOCKSProxyManager
 import socks
 import argparse
 import socket
+import threading
 
 
-def listen_shell(addr: str, port: int):
-    s = socket.socket()
-    s.bind((addr, port))
-    s.listen()
-    print(f"start listen to {addr}:{port}, wait for shell")
-    fp, _addr = s.accept()
-    print(f"get connection from {_addr[0]}:{_addr[1]}")
-    s.close()
-    shell = ShellUtil(fp)
-    shell.interactive()
+class ShellClient:
+    def __init__(self, addr: str, port: int):
+        self.addr = addr
+        self.port = port
+        self.shell_fd = None
+        self.accept_thread = None
+
+    def connect_shell(self):
+        s = socket.socket()
+        s.connect((self.addr, self.port))
+        print(f"connect shell to {self.addr}:{self.port} success")
+        shell = ShellUtil(s)
+        return shell
+
+    def listen_shell(self):
+        s = socket.socket()
+        s.bind((self.addr, self.port))
+        s.listen()
+        print(f"start listen to {self.addr}:{self.port}, wait for shell")
+
+        def accept_shell():
+            fd, _addr = s.accept()
+            print(f"get connection from {_addr[0]}:{_addr[1]}")
+            s.close()
+            self.shell_fd = fd
+
+        t = threading.Thread(target=accept_shell)
+        t.start()
+        self.accept_thread = t
+
+    def wait_shell(self):
+        self.accept_thread.join()
+        shell = ShellUtil(self.shell_fd)
+        return shell
 
 
-def connect_shell(addr: str, port: int):
-    s = socket.socket()
-    s.connect((addr, port))
-    print(f"connect shell to {addr}:{port} success")
-    shell = ShellUtil(s)
-    shell.interactive()
+# def listen_shell(addr: str, port: int):
+#     s = socket.socket()
+#     s.bind((addr, port))
+#     s.listen()
+#     print(f"start listen to {addr}:{port}, wait for shell")
+#     fp, _addr = s.accept()
+#     print(f"get connection from {_addr[0]}:{_addr[1]}")
+#     s.close()
+#     shell = ShellUtil(fp)
+#     shell.interactive()
+#
+#
+# def connect_shell(addr: str, port: int):
+#     s = socket.socket()
+#     s.connect((addr, port))
+#     print(f"connect shell to {addr}:{port} success")
+#     shell = ShellUtil(s)
+#     shell.interactive()
 
 
 def main_start():
@@ -43,8 +80,12 @@ def main_start():
                                 s5option["username"], s5option["password"])
         socket.socket = socks.socksocket
 
+    c = ShellClient(arg.addr, arg.port)
     # listen mode
     if arg.listen:
-        listen_shell(arg.addr, arg.port)
+        c.listen_shell()
+        shell = c.wait_shell()
+        shell.interactive()
     else:
-        connect_shell(arg.addr, arg.port)
+        shell = c.connect_shell()
+        shell.interactive()

@@ -25,14 +25,29 @@ class VShell(cmd2.Cmd):
         self.stop = True
         return True
 
+    download_parser = cmd2.Cmd2ArgumentParser()
+    download_parser.add_argument("src", help="remote src file path")
+    download_parser.add_argument("dest", help="local dest file path", completer=cmd2.Cmd.path_complete)
+
+    @cmd2.with_argparser(download_parser)
+    def do_download(self, arg):
+        cmd_template = "cat %s"
+        src_file = arg.src
+        dest_file = arg.dest
+
+        cmd = cmd_template % src_file
+        cmd_return: bytes = self.shell.run_cmd(cmd.encode("latin"))
+        with open(dest_file, 'wb') as fp:
+            fp.write(cmd_return)
+
     upload_parser = cmd2.Cmd2ArgumentParser()
-    upload_parser.add_argument("src", help="src file path", completer=cmd2.Cmd.path_complete)
-    upload_parser.add_argument("dest", help="dest file path")
-    cmd_template3 = 'python -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
-    cmd_template2 = 'python -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
+    upload_parser.add_argument("src", help="local src file path", completer=cmd2.Cmd.path_complete)
+    upload_parser.add_argument("dest", help="remote dest file path")
 
     @cmd2.with_argparser(upload_parser)
     def do_upload(self, arg):
+        cmd_template3 = 'python -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
+        cmd_template2 = 'python -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
         src_file = arg.src
         if not os.path.exists(src_file):
             print(f"target file {src_file} not exist")
@@ -44,9 +59,9 @@ class VShell(cmd2.Cmd):
         # get python version
         cmd_return: bytes = self.shell.run_cmd(b"python --version")
         if cmd_return.startswith(b"Python 3"):
-            cmd_template = self.cmd_template3
+            cmd_template = cmd_template3
         elif cmd_return.startswith(b"Python 2"):
-            cmd_template = self.cmd_template2
+            cmd_template = cmd_template2
         else:
             try:
                 print("Unknown python version %s" % (cmd_return.decode(self.encode)))

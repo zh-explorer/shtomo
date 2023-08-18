@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='shtomo',
-    version='0.0.1',
+    version='0.0.2',
     packages=['shtomo'],
     url='https://github.com/zh-explorer/shtomo',
     license='WTFPL',

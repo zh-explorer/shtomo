@@ -3,4 +3,4 @@ from shtomo import client
 
 from shtomo.shell_io import ShellUtil
 from shtomo.shtomo import VShell
-from shtomo.client import main_start
+from shtomo.client import main_start, ShellClient
