@@ -24,6 +24,7 @@ class ShellClient:
 
     def listen_shell(self):
         s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.addr, self.port))
         s.listen()
         print(f"start listen to {self.addr}:{self.port}, wait for shell")
