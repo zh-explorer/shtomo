@@ -125,7 +125,7 @@ class ShellUtil:
             self.unget(next_ch)
 
         data = self.recv_until(token_end)
-        junk = self.recv()
+        junk = self.recv(timeout=0.1)
         return data[:-len(token_end)]
 
     def execute_cmd(self, cmd: bytes):
@@ -147,9 +147,9 @@ class ShellUtil:
 
     # put data back to stream
     def unget(self, data: bytes):
-        self.io_buffer += data
+        self.io_buffer = data + self.io_buffer
 
-    def recv(self, size: int = 0, timeout=0) -> bytes:
+    def recv(self, size: int = 0, timeout=None) -> bytes:
         assert size >= 0
         self.clean_sel()
         self.sel.register(self.io, selectors.EVENT_READ)
@@ -179,7 +179,7 @@ class ShellUtil:
                         re = self.io.recv(size - read_len)
                         read_len += len(re)
                         data += re
-                    if int(time.time()) - start_time > timeout:
+                    if timeout is not None and int(time.time()) - start_time > timeout:
                         # timeout give up amd return data we read
                         break
         return data
@@ -189,7 +189,7 @@ class ShellUtil:
         while end not in data:
             data += self.recv()
         idx = data.index(end)
-        self.io_buffer = data[idx + len(end):]
+        self.unget(data[idx + len(end):])
         data = data[:idx + len(end)]
         return data
 

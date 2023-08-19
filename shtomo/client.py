@@ -45,26 +45,6 @@ class ShellClient:
         return shell
 
 
-# def listen_shell(addr: str, port: int):
-#     s = socket.socket()
-#     s.bind((addr, port))
-#     s.listen()
-#     print(f"start listen to {addr}:{port}, wait for shell")
-#     fp, _addr = s.accept()
-#     print(f"get connection from {_addr[0]}:{_addr[1]}")
-#     s.close()
-#     shell = ShellUtil(fp)
-#     shell.interactive()
-#
-#
-# def connect_shell(addr: str, port: int):
-#     s = socket.socket()
-#     s.connect((addr, port))
-#     print(f"connect shell to {addr}:{port} success")
-#     shell = ShellUtil(s)
-#     shell.interactive()
-
-
 def main_start():
     parser = argparse.ArgumentParser(description="shtomo client for connect shell")
     parser.add_argument("-l", "--listen", help="set client to listen a shell", action="store_true")
