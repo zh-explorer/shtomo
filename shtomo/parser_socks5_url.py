@@ -36,7 +36,7 @@ class SOCKSProxyManager():
 
         self.socks_options = {
             "socks_version": socks_version,
-            "proxy_host": parsed.host,
+            "proxy_host": parsed.hostname,
             "proxy_port": parsed.port,
             "username": username,
             "password": password,
