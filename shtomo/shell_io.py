@@ -128,6 +128,42 @@ class ShellUtil:
         junk = self.recv(timeout=0.1)
         return data[:-len(token_end)]
 
+    def download_file(self,src_file:string, dest_file: string):
+        cmd_template = "cat %s"
+        cmd = cmd_template % src_file
+        cmd_return: bytes = self.run_cmd(cmd.encode("latin"))
+        with open(dest_file, 'wb') as fp:
+            fp.write(cmd_return)
+
+    def upload_file(self, src_file: string, dest_file: string, encode: string):
+        cmd_template3 = 'python -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
+        cmd_template2 = 'python -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
+        if not os.path.exists(src_file):
+            print(f"target file {src_file} not exist")
+            return
+        with open(src_file, 'rb') as fp:
+            data = fp.read()
+
+        # get python version
+        cmd_return: bytes = self.run_cmd(b"python --version")
+        if cmd_return.startswith(b"Python 3"):
+            cmd_template = cmd_template3
+        elif cmd_return.startswith(b"Python 2"):
+            cmd_template = cmd_template2
+        else:
+            try:
+                print("Unknown python version %s" % (cmd_return.decode(encode)))
+            except UnicodeDecodeError:
+                print("Unknown python version %s" % cmd_return)
+            return
+
+        shell_cmd = cmd_template % (len(data), dest_file)
+        shell_cmd = shell_cmd.encode(encode)
+
+        self.execute_cmd(shell_cmd)
+        time.sleep(1)  # wait for some times
+        self.send(data)
+
     def execute_cmd(self, cmd: bytes):
         self.sendline(cmd)
 
