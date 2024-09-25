@@ -1,0 +1,22 @@
+[project]
+name = "shtomo"
+version = "0.1.0"
+description = "shell's good friends"
+authors = [
+    {name = "explorer", email = "hsadkhk@gmail.com"},
+]
+dependencies = [
+    "cmd2~=2.4.3",
+    "pysocks",
+    "setuptools~=59.6.0",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "WTFPL"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
