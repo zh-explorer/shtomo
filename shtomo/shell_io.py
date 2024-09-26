@@ -20,6 +20,11 @@ class ShellUtil:
         self.sel = selectors.DefaultSelector()
         self.term_mode = False
         self.console = VShell(self)
+        # redirect stderr to stdout
+        self.dup_stderr()
+
+    def dup_stderr(self):
+        self.execute_cmd(b"exec 2>&1")
 
     def get_unblock_stdin(self):
         fd = os.dup(0)
