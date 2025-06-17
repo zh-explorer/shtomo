@@ -75,7 +75,13 @@ class ShellUtil:
                     data = self.io.recv(1024)
                     if data == b'':
                         return False
-                    os.write(1, data)
+                    # in macos, the write will raise busy some time
+                    writed = 0
+                    while writed < len(data):
+                        try:
+                            writed += os.write(1, data[writed: writed + 1024])
+                        except BlockingIOError:
+                            time.sleep(0.01) 
                 else:
                     data = os.read(0, 1024)
                     if self.term_mode:
