@@ -1,6 +1,6 @@
 [project]
 name = "shtomo"
-version = "0.1.0"
+version = "0.1.1"
 description = "shell's good friends"
 authors = [
     {name = "explorer", email = "hsadkhk@gmail.com"},
