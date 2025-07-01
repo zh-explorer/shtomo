@@ -147,8 +147,8 @@ class ShellUtil:
             fp.write(cmd_return)
 
     def upload_file(self, src_file: string, dest_file: string, encode: string):
-        cmd_template3 = 'python -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
-        cmd_template2 = 'python -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
+        cmd_template3 = 'python -E -sS -u -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
+        cmd_template2 = 'python -E -sS -u -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
         if not os.path.exists(src_file):
             print(f"target file {src_file} not exist")
             return

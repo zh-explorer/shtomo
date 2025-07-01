@@ -11,7 +11,10 @@ class VShell(cmd2.Cmd):
         super().__init__(completekey, stdin, stdout, allow_cli_args=False)
         self.stop = False
         self.shell = shell
-        self.encode = "utf8"
+        self.config = {}
+        self.config["encode"] = "utf8"
+        self.config["bash_path"] = "/bin/bash"
+        # self.encode = "utf8"
 
     def do_return(self, arg):
         self.stop = False
@@ -46,13 +49,29 @@ class VShell(cmd2.Cmd):
         dest_file = arg.dest
         return self.shell.upload_file(src_file, dest_file, self.encode)
 
-    encode_parser = cmd2.Cmd2ArgumentParser()
-    encode_parser.add_argument("encode", help="terminal encoder")
+    # encode_parser = cmd2.Cmd2ArgumentParser()
+    # encode_parser.add_argument("encode", help="terminal encoder")
 
-    @cmd2.with_argparser(encode_parser)
-    def do_encode(self, arg):
-        encode = arg.encode
-        self.encode = encode
+    # @cmd2.with_argparser(encode_parser)
+    # def do_encode(self, arg):
+    #     encode = arg.encode
+    #     self.encode = encode
+
+    config_parser = cmd2.Cmd2ArgumentParser()
+    config_parser.add_argument("key", help="config key")
+    config_parser.add_argument("value", help="config value")
+    @cmd2.with_argparser(config_parser)
+    def do_config(self, arg):
+        if arg.value is None:
+            print(f"{arg.key}: {self.config[arg.key]}")
+            return
+        elif arg.key is None:
+            for key, value in self.config.items():
+                print(f"{key}: {value}")
+            return
+        key = arg.key
+        value = arg.value
+        self.config[key] = value
 
     def do_rcmd(self, arg: str):
         arg = arg.encode(self.encode)
@@ -63,7 +82,8 @@ class VShell(cmd2.Cmd):
             print(data)
 
     def do_term(self, arg):
-        self.shell.execute_cmd(b"python -c 'import pty; pty.spawn(\"/bin/bash\")'")
+        cmd = f"python -sS -u -c 'import pty; pty.spawn(\"{self.config['bash_path']}\")'"
+        self.shell.execute_cmd(cmd.encode(self.config["encode"]))
         self.shell.set_term_mode(True)
         return True
 
