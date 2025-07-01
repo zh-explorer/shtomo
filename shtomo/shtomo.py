@@ -47,7 +47,7 @@ class VShell(cmd2.Cmd):
     def do_upload(self, arg):
         src_file = arg.src
         dest_file = arg.dest
-        return self.shell.upload_file(src_file, dest_file, self.encode)
+        return self.shell.upload_file(src_file, dest_file, self.config["encode"])
 
     # encode_parser = cmd2.Cmd2ArgumentParser()
     # encode_parser.add_argument("encode", help="terminal encoder")
@@ -74,10 +74,10 @@ class VShell(cmd2.Cmd):
         self.config[key] = value
 
     def do_rcmd(self, arg: str):
-        arg = arg.encode(self.encode)
+        arg = arg.encode(self.config["encode"])
         data = self.shell.run_cmd(arg)
         try:
-            print(data.decode(self.encode))
+            print(data.decode(self.config["encode"]))
         except UnicodeDecodeError:
             print(data)
 
