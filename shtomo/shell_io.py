@@ -21,7 +21,7 @@ class ShellUtil:
         self.term_mode = False
         self.console = VShell(self)
         # redirect stderr to stdout
-        self.dup_stderr()
+        # self.dup_stderr()
 
     def dup_stderr(self):
         self.execute_cmd(b"exec 2>&1")
@@ -139,16 +139,16 @@ class ShellUtil:
         junk = self.recv(timeout=0.1)
         return data[:-len(token_end)]
 
-    def download_file(self,src_file:string, dest_file: string):
-        cmd_template = "cat %s"
+    def download_file(self,src_file:string, dest_file: string, cat_path: string):
+        cmd_template = f"{cat_path} %s"
         cmd = cmd_template % src_file
         cmd_return: bytes = self.run_cmd(cmd.encode("latin"))
         with open(dest_file, 'wb') as fp:
             fp.write(cmd_return)
 
-    def upload_file(self, src_file: string, dest_file: string, encode: string):
-        cmd_template3 = 'python -E -sS -u -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
-        cmd_template2 = 'python -E -sS -u -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
+    def upload_file(self, src_file: string, dest_file: string, encode: string, python_path: string):
+        cmd_template3 = f'{python_path} -E -sS -u -c "import sys;sys.stdout.buffer.write(sys.stdin.buffer.read(%d))" > %s'
+        cmd_template2 = f'{python_path} -E -sS -u -c "import sys;sys.stdout.write(sys.stdin.read(%d))" > %s'
         if not os.path.exists(src_file):
             print(f"target file {src_file} not exist")
             return
@@ -156,7 +156,7 @@ class ShellUtil:
             data = fp.read()
 
         # get python version
-        cmd_return: bytes = self.run_cmd(b"python --version")
+        cmd_return: bytes = self.run_cmd(f"{python_path} --version".encode("latin"))
         if cmd_return.startswith(b"Python 3"):
             cmd_template = cmd_template3
         elif cmd_return.startswith(b"Python 2"):

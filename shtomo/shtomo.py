@@ -14,6 +14,8 @@ class VShell(cmd2.Cmd):
         self.config = {}
         self.config["encode"] = "utf8"
         self.config["bash_path"] = "/bin/bash"
+        self.config["python_path"] = "python"
+        self.config["cat_path"] = "cat"
         # self.encode = "utf8"
 
     def do_return(self, arg):
@@ -28,6 +30,10 @@ class VShell(cmd2.Cmd):
         self.stop = True
         return True
 
+    def do_dup_stderr(self, arg):
+        self.shell.dup_stderr()
+        return True
+
     download_parser = cmd2.Cmd2ArgumentParser()
     download_parser.add_argument("src", help="remote src file path")
     download_parser.add_argument("dest", help="local dest file path", completer=cmd2.Cmd.path_complete)
@@ -36,7 +42,7 @@ class VShell(cmd2.Cmd):
     def do_download(self, arg):
         src_file = arg.src
         dest_file = arg.dest
-        return self.shell.download_file(src_file, dest_file)
+        return self.shell.download_file(src_file, dest_file, cat_path=self.config["cat_path"])
 
 
     upload_parser = cmd2.Cmd2ArgumentParser()
@@ -47,7 +53,7 @@ class VShell(cmd2.Cmd):
     def do_upload(self, arg):
         src_file = arg.src
         dest_file = arg.dest
-        return self.shell.upload_file(src_file, dest_file, self.config["encode"])
+        return self.shell.upload_file(src_file, dest_file, self.encode, python_path=self.config["python_path"])
 
     # encode_parser = cmd2.Cmd2ArgumentParser()
     # encode_parser.add_argument("encode", help="terminal encoder")
@@ -73,16 +79,17 @@ class VShell(cmd2.Cmd):
         value = arg.value
         self.config[key] = value
 
+
     def do_rcmd(self, arg: str):
-        arg = arg.encode(self.config["encode"])
+        arg = arg.encode(self.encode)
         data = self.shell.run_cmd(arg)
         try:
-            print(data.decode(self.config["encode"]))
+            print(data.decode(self.encode))
         except UnicodeDecodeError:
             print(data)
 
     def do_term(self, arg):
-        cmd = f"python -sS -u -c 'import pty; pty.spawn(\"{self.config['bash_path']}\")'"
+        cmd = f"{self.config['python_path']} -sS -u -c 'import pty; pty.spawn(\"{self.config['bash_path']}\")'"
         self.shell.execute_cmd(cmd.encode(self.config["encode"]))
         self.shell.set_term_mode(True)
         return True
